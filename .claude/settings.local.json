@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/gulfamkhan/Desktop/Projects/Market Analyser\" && rm -rf frontend && npx create-next-app@latest frontend --typescript --tailwind --eslint --app --src-dir --no-import-alias --use-npm --turbopack 2>&1 <<EOF\nNo\nEOF)",
+      "Bash(head:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}

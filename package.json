@@ -1,0 +1,13 @@
+{
+  "name": "market-analyser",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --names backend,frontend --prefix-colors blue,green \"cd backend && source venv/bin/activate && uvicorn main:app --reload\" \"cd frontend && npm run dev\"",
+    "backend": "cd backend && source venv/bin/activate && uvicorn main:app --reload",
+    "frontend": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
