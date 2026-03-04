@@ -45,10 +45,10 @@ export function AllocationPie({ sectorAllocation, positionWeights }: AllocationP
             outerRadius={120}
             innerRadius={80}
             dataKey="value"
-            label={({ name, value, cx, cy, midAngle, outerRadius: or }) => {
-              if (value < 5) return null;
+            label={({ name, value, cx, cy, midAngle, outerRadius: or }: any) => {
+              if (value < 5 || midAngle == null) return null;
               const RADIAN = Math.PI / 180;
-              const radius = or + 20;
+              const radius = (or ?? 120) + 20;
               const x = cx + radius * Math.cos(-midAngle * RADIAN);
               const y = cy + radius * Math.sin(-midAngle * RADIAN);
               return (
