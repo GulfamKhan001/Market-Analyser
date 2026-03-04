@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model StockPrice {
+  id       Int      @id @default(autoincrement())
+  ticker   String
+  date     DateTime
+  open     Float?
+  high     Float?
+  low      Float?
+  close    Float?
+  adjClose Float?   @map("adj_close")
+  volume   Int?
+
+  @@unique([ticker, date], name: "uq_ticker_date")
+  @@index([ticker])
+  @@index([ticker, date], name: "ix_ticker_date")
+  @@map("stock_prices")
+}
+
+model Fundamental {
+  id             Int      @id @default(autoincrement())
+  ticker         String
+  dateFetched    DateTime @map("date_fetched")
+  marketCap      Float?   @map("market_cap")
+  peRatio        Float?   @map("pe_ratio")
+  pbRatio        Float?   @map("pb_ratio")
+  psRatio        Float?   @map("ps_ratio")
+  pegRatio       Float?   @map("peg_ratio")
+  evToEbitda     Float?   @map("ev_to_ebitda")
+  roe            Float?
+  roa            Float?
+  debtToEquity   Float?   @map("debt_to_equity")
+  currentRatio   Float?   @map("current_ratio")
+  freeCashFlow   Float?   @map("free_cash_flow")
+  revenueGrowth  Float?   @map("revenue_growth")
+  earningsGrowth Float?   @map("earnings_growth")
+  dividendYield  Float?   @map("dividend_yield")
+  sector         String?
+  industry       String?
+
+  @@index([ticker])
+  @@map("fundamentals")
+}
+
+model MacroIndicator {
+  id            Int      @id @default(autoincrement())
+  indicatorName String   @map("indicator_name")
+  date          DateTime
+  value         Float
+
+  @@unique([indicatorName, date], name: "uq_indicator_date")
+  @@index([indicatorName])
+  @@map("macro_indicators")
+}
+
+model TechnicalSignal {
+  id        Int      @id @default(autoincrement())
+  ticker    String
+  date      DateTime
+  timeframe String   @default("daily")
+
+  rsi         Float?
+  stochasticK Float? @map("stochastic_k")
+  stochasticD Float? @map("stochastic_d")
+  williamsR   Float? @map("williams_r")
+  roc         Float?
+
+  macd       Float?
+  macdSignal Float? @map("macd_signal")
+  macdHist   Float? @map("macd_hist")
+  adx        Float?
+  sma20      Float? @map("sma_20")
+  sma50      Float? @map("sma_50")
+  sma200     Float? @map("sma_200")
+  ema12      Float? @map("ema_12")
+  ema26      Float? @map("ema_26")
+
+  bbUpper  Float? @map("bb_upper")
+  bbMiddle Float? @map("bb_middle")
+  bbLower  Float? @map("bb_lower")
+  atr      Float?
+
+  obv            Float?
+  volumeSmaRatio Float? @map("volume_sma_ratio")
+
+  compositeScore  Float? @map("composite_score")
+  trendScore      Float? @map("trend_score")
+  momentumScore   Float? @map("momentum_score")
+  volatilityScore Float? @map("volatility_score")
+  volumeScore     Float? @map("volume_score")
+
+  @@unique([ticker, date, timeframe], name: "uq_tech_ticker_date_tf")
+  @@index([ticker])
+  @@map("technical_signals")
+}
+
+model RegimeState {
+  id              Int      @id @default(autoincrement())
+  date            DateTime @unique
+  regimeLabel     String   @map("regime_label")
+  confidence      Float?
+  vixRegime       String?  @map("vix_regime")
+  yieldCurveState String?  @map("yield_curve_state")
+  breadthScore    Float?   @map("breadth_score")
+  hmmState        Int?     @map("hmm_state")
+
+  @@map("regime_states")
+}
+
+model PortfolioPosition {
+  id            Int      @id @default(autoincrement())
+  ticker        String
+  entryDate     DateTime @map("entry_date")
+  entryPrice    String   @map("entry_price")
+  quantity      String
+  currentPrice  Float?   @map("current_price")
+  unrealizedPnl Float?   @map("unrealized_pnl")
+  sector        String?
+  positionType  String   @default("long") @map("position_type")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("portfolio_positions")
+}
+
+model PortfolioSnapshot {
+  id                    Int      @id @default(autoincrement())
+  date                  DateTime @unique
+  totalValue            Float?   @map("total_value")
+  dailyReturn           Float?   @map("daily_return")
+  drawdown              Float?
+  var95                 Float?   @map("var_95")
+  cvar95                Float?   @map("cvar_95")
+  sharpeRatio           Float?   @map("sharpe_ratio")
+  sortinoRatio          Float?   @map("sortino_ratio")
+  beta                  Float?
+  sectorAllocationsJson String?  @map("sector_allocations_json")
+
+  @@map("portfolio_snapshots")
+}
+
+model AIAnalysis {
+  id                     Int      @id @default(autoincrement())
+  ticker                 String
+  date                   DateTime @default(now())
+  analysisType           String   @default("standard") @map("analysis_type")
+  modelUsed              String?  @map("model_used")
+
+  bullProbability        Float?   @map("bull_probability")
+  bullTarget             String?  @map("bull_target")
+  bullThesis             String?  @map("bull_thesis")
+
+  baseProbability        Float?   @map("base_probability")
+  baseTarget             String?  @map("base_target")
+  baseThesis             String?  @map("base_thesis")
+
+  bearProbability        Float?   @map("bear_probability")
+  bearTarget             String?  @map("bear_target")
+  bearThesis             String?  @map("bear_thesis")
+
+  riskFactorsJson        String?  @map("risk_factors_json")
+  drawdownEstimate       String?  @map("drawdown_estimate")
+  positionSizeSuggestion Float?   @map("position_size_suggestion")
+  reasoningText          String?  @map("reasoning_text")
+  confidenceScore        Float?   @map("confidence_score")
+  timeframe              String?
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  @@index([ticker])
+  @@map("ai_analyses")
+}
+
+model Transaction {
+  id              Int      @id @default(autoincrement())
+  ticker          String
+  transactionType String   @map("transaction_type")
+  date            DateTime
+  price           String
+  quantity        String
+  totalAmount     String   @map("total_amount")
+  fees            Float    @default(0.0)
+  positionId      Int?     @map("position_id")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([ticker, date], name: "ix_transaction_ticker_date")
+  @@map("transactions")
+}
+
+model CashBalance {
+  id           Int      @id @default(autoincrement())
+  date         DateTime
+  balanceUsd   String   @map("balance_usd")
+  changeAmount String   @map("change_amount")
+  changeReason String   @map("change_reason")
+  referenceId  Int?     @map("reference_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([date], name: "ix_cash_balance_date")
+  @@map("cash_balances")
+}
+
+model NewsSentiment {
+  id             Int      @id @default(autoincrement())
+  ticker         String
+  date           DateTime
+  headline       String
+  source         String?
+  url            String?
+  sentimentScore Float?   @map("sentiment_score")
+  relevanceScore Float?   @map("relevance_score")
+  summary        String?
+
+  @@index([ticker])
+  @@map("news_sentiment")
+}

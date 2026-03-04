@@ -145,6 +145,115 @@ export interface MarketOutlook {
   outlook_text: string;
 }
 
+// Transactions
+export interface Transaction {
+  id: number;
+  ticker: string;
+  transaction_type: "BUY" | "SELL" | "DIVIDEND";
+  date: string;
+  price: number;
+  quantity: number;
+  total_amount: number;
+  fees: number;
+  position_id: number | null;
+  notes: string | null;
+  created_at: string | null;
+}
+
+// Monte Carlo
+export interface MonteCarloResult {
+  current_value: number;
+  horizon_days: number;
+  num_paths: number;
+  percentiles: {
+    p5: number[];
+    p25: number[];
+    p50: number[];
+    p75: number[];
+    p95: number[];
+  };
+  terminal_distribution: {
+    mean: number;
+    median: number;
+    std: number;
+    prob_loss: number;
+    worst_case_5pct: number;
+    best_case_95pct: number;
+    mean_return_pct: number;
+  };
+}
+
+// Stress Test
+export interface StressTestScenario {
+  label: string;
+  spy_drop_pct: number;
+  portfolio_impact_pct: number;
+  portfolio_impact_usd: number;
+  worst_hit_positions: { ticker: string; impact_usd: number }[];
+}
+
+// Portfolio Health
+export interface PortfolioHealth {
+  total: number;
+  diversification: number;
+  risk: number;
+  performance: number;
+  balance: number;
+  details: {
+    position_count: number;
+    sector_hhi: number;
+    top_3_pct: number;
+    sharpe: number | null;
+    max_drawdown: number | null;
+    twr_annualized: number;
+    beta: number | null;
+    cluster_count: number;
+  };
+}
+
+// Currency Exposure
+export interface CurrencyExposureData {
+  usd_inr_rate: number;
+  portfolio_value_usd: number;
+  portfolio_value_inr: number;
+  fx_volatility_pct: number;
+  inr_sensitivity: {
+    inr_move_pct: number;
+    adjusted_rate: number;
+    portfolio_value_inr: number;
+    change_inr: number;
+  }[];
+}
+
+// Concentration
+export interface ConcentrationData {
+  top_3_pct: number;
+  top_5_pct: number;
+  largest_position: { ticker: string; weight_pct: number } | null;
+  hhi: number;
+  position_weights: { ticker: string; weight_pct: number }[];
+}
+
+// Correlation Clusters
+export interface CorrelationClusters {
+  clusters: { cluster_id: number; tickers: string[] }[];
+  high_correlation_pairs: { ticker_1: string; ticker_2: string; correlation: number }[];
+}
+
+// TWR
+export interface TWRResult {
+  twr_total: number;
+  twr_annualized: number;
+  days: number;
+}
+
+// Cash Balance
+export interface CashBalanceData {
+  balance_usd: number;
+  change_amount: number;
+  change_reason: string;
+}
+
 // News
 export interface NewsArticle {
   date: string;

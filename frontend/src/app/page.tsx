@@ -6,6 +6,7 @@ import { RegimeBadge } from "@/components/cards/RegimeBadge";
 import { StatCard } from "@/components/cards/StatCard";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import Link from "next/link";
+import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 
 export default function DashboardPage() {
   const regime = useQuery({ queryKey: ["regime"], queryFn: regimeAPI.getCurrent });
@@ -27,35 +28,44 @@ export default function DashboardPage() {
       {/* Portfolio Overview */}
       <section>
         <h2 className="text-lg font-semibold mb-3">Portfolio Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Value"
-            value={formatCurrency(portfolio.data?.total_value)}
-            subtitle={`${portfolio.data?.position_count ?? 0} positions`}
-          />
-          <StatCard
-            title="Unrealized P&L"
-            value={formatCurrency(portfolio.data?.total_pnl)}
-            subtitle={formatPercent(portfolio.data?.total_pnl_pct)}
-            trend={
-              portfolio.data?.total_pnl > 0
-                ? "up"
-                : portfolio.data?.total_pnl < 0
-                ? "down"
-                : "neutral"
-            }
-          />
-          <StatCard
-            title="VaR (95%)"
-            value={risk.data?.var_95 != null ? `${(risk.data.var_95 * 100).toFixed(2)}%` : "N/A"}
-            subtitle="Daily Value at Risk"
-          />
-          <StatCard
-            title="Sharpe Ratio"
-            value={risk.data?.sharpe_ratio?.toFixed(2) ?? "N/A"}
-            subtitle="Risk-adjusted return"
-          />
-        </div>
+        {portfolio.isLoading || risk.isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Value"
+              value={formatCurrency(portfolio.data?.total_value)}
+              subtitle={`${portfolio.data?.position_count ?? 0} positions`}
+            />
+            <StatCard
+              title="Unrealized P&L"
+              value={formatCurrency(portfolio.data?.total_pnl)}
+              subtitle={formatPercent(portfolio.data?.total_pnl_pct)}
+              trend={
+                portfolio.data?.total_pnl > 0
+                  ? "up"
+                  : portfolio.data?.total_pnl < 0
+                  ? "down"
+                  : "neutral"
+              }
+            />
+            <StatCard
+              title="VaR (95%)"
+              value={risk.data?.var_95 != null ? `${(risk.data.var_95 * 100).toFixed(2)}%` : "N/A"}
+              subtitle="Daily Value at Risk"
+            />
+            <StatCard
+              title="Sharpe Ratio"
+              value={risk.data?.sharpe_ratio?.toFixed(2) ?? "N/A"}
+              subtitle="Risk-adjusted return"
+            />
+          </div>
+        )}
       </section>
 
       {/* Market Regime */}
@@ -63,7 +73,14 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold mb-3">Market Regime</h2>
         <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
           {regime.isLoading ? (
-            <p className="text-gray-500">Loading regime data...</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-2 w-16" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              ))}
+            </div>
           ) : regime.data ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>

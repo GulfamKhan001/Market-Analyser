@@ -9,6 +9,7 @@ import { ScoreRadar } from "@/components/charts/ScoreRadar";
 import { CompositeScoreBar } from "@/components/cards/CompositeScoreBar";
 import { ScenarioCard } from "@/components/cards/ScenarioCard";
 import { formatCurrency, formatLargeNumber, formatPercent } from "@/lib/utils";
+import { Skeleton, SkeletonScoreBar } from "@/components/ui/Skeleton";
 
 export default function AnalysisPage() {
   const { ticker } = useParams<{ ticker: string }>();
@@ -74,11 +75,13 @@ export default function AnalysisPage() {
       {/* Price Chart */}
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
         <h2 className="text-sm font-semibold text-gray-400 uppercase mb-3">Price History</h2>
-        {prices.data?.data ? (
+        {prices.isLoading ? (
+          <Skeleton className="h-64 w-full" />
+        ) : prices.data?.data ? (
           <PriceChart data={prices.data.data} />
         ) : (
           <p className="text-gray-500 h-64 flex items-center justify-center">
-            {prices.isLoading ? "Loading..." : "No price data"}
+            No price data
           </p>
         )}
       </div>
@@ -139,10 +142,15 @@ export default function AnalysisPage() {
                 </div>
               </div>
             </div>
+          ) : technical.isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonScoreBar key={i} />
+              ))}
+              <Skeleton className="h-48 w-full mt-4" />
+            </div>
           ) : (
-            <p className="text-gray-500">
-              {technical.isLoading ? "Computing..." : "No technical data"}
-            </p>
+            <p className="text-gray-500">No technical data</p>
           )}
         </div>
 
@@ -172,10 +180,14 @@ export default function AnalysisPage() {
                 score={fundamental.data.dividend_score}
               />
             </div>
+          ) : fundamental.isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <SkeletonScoreBar key={i} />
+              ))}
+            </div>
           ) : (
-            <p className="text-gray-500">
-              {fundamental.isLoading ? "Computing..." : "No fundamental data"}
-            </p>
+            <p className="text-gray-500">No fundamental data</p>
           )}
 
           {fundamentalData.data && (

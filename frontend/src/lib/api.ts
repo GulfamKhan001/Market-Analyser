@@ -1,9 +1,33 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (API_KEY) {
+    headers["X-API-Key"] = API_KEY;
+  }
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...options,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(error.detail || `API error: ${res.status}`);
+  }
+  return res.json();
+}
+
+async function fetchFormData<T>(endpoint: string, formData: FormData): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (API_KEY) {
+    headers["X-API-Key"] = API_KEY;
+  }
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
@@ -48,6 +72,8 @@ export const analysisAPI = {
   },
   getFullAnalysis: (ticker: string) =>
     fetchAPI<any>(`/analysis/full/${ticker}`),
+  scan: () =>
+    fetchAPI<any>("/analysis/scan", { method: "POST" }),
 };
 
 // Portfolio
@@ -75,6 +101,41 @@ export const portfolioAPI = {
     fetchAPI<any>("/portfolio/refresh-prices", { method: "POST" }),
   takeSnapshot: () =>
     fetchAPI<any>("/portfolio/snapshot", { method: "POST" }),
+  getTransactions: (ticker?: string, limit = 100) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (ticker) params.set("ticker", ticker);
+    return fetchAPI<{ transactions: any[] }>(`/portfolio/transactions?${params}`);
+  },
+  getCash: () => fetchAPI<any>("/portfolio/cash"),
+  depositCash: (amount: number) =>
+    fetchAPI<any>("/portfolio/cash/deposit", {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    }),
+  withdrawCash: (amount: number) =>
+    fetchAPI<any>("/portfolio/cash/withdraw", {
+      method: "POST",
+      body: JSON.stringify({ amount }),
+    }),
+  getMonteCarlo: (paths = 1000, horizon = 252) =>
+    fetchAPI<any>(`/portfolio/monte-carlo?paths=${paths}&horizon=${horizon}`),
+  getStressTest: () => fetchAPI<any>("/portfolio/stress-test"),
+  runCustomStress: (drops: number[]) =>
+    fetchAPI<any>("/portfolio/stress-test", {
+      method: "POST",
+      body: JSON.stringify({ drops }),
+    }),
+  getConcentration: () => fetchAPI<any>("/portfolio/concentration"),
+  getCorrelationClusters: (threshold = 0.7) =>
+    fetchAPI<any>(`/portfolio/correlation-clusters?threshold=${threshold}`),
+  getCurrency: () => fetchAPI<any>("/portfolio/currency"),
+  getTWR: () => fetchAPI<any>("/portfolio/twr"),
+  getHealth: () => fetchAPI<any>("/portfolio/health"),
+  importVested: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetchFormData<any>("/portfolio/import-vested", formData);
+  },
 };
 
 // AI

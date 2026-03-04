@@ -1,9 +1,4 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
-backend/venv/
-*.egg-info/
+# Build
 dist/
 build/
 
@@ -30,3 +25,6 @@ Thumbs.db
 # Misc
 *.log
 *.pem
+
+#claude
+.claude

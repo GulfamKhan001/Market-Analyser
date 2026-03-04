@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --names backend,frontend --prefix-colors blue,green \"cd backend && source venv/bin/activate && uvicorn main:app --reload\" \"cd frontend && npm run dev\"",
-    "backend": "cd backend && source venv/bin/activate && uvicorn main:app --reload",
-    "frontend": "cd frontend && npm run dev"
+    "dev": "concurrently --names backend,frontend --prefix-colors blue,green \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "setup": "cd backend && npm install && npm run setup",
+    "test": "cd backend && npm test",
+    "build": "cd backend && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
