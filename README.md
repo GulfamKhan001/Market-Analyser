@@ -36,14 +36,18 @@ and scored them on trend, momentum, volatility, volume
         v
 It checked the market regime:
 "Is this a good time to be aggressive or defensive?"
+(auto-fetches VIX + yield data from FRED if missing)
         |
         v
 It calculated your portfolio risk:
 "How exposed am I? How correlated are my holdings?"
+(auto-fetches historical prices if missing)
         |
         v
 AI reads all of this and gives you:
-"Here's what I think, here's the probability, here's the risk"
+- Portfolio grade (A-F) with strengths/weaknesses
+- Actionable recommendations
+- Ask follow-up questions in natural language
         |
         v
 You see it all on a clean dashboard with charts and scores
@@ -56,7 +60,7 @@ You see it all on a clean dashboard with charts and scores
 ```
 +---------------------------------------------------+
 |              Next.js Frontend                      |
-|    Dashboard | Screener | Portfolio | Regime       |
+| Dashboard (AI Review + Q&A) | Screener | Portfolio|
 +------------------------+--------------------------+
                          | REST API
 +------------------------+--------------------------+
@@ -95,11 +99,14 @@ You see it all on a clean dashboard with charts and scores
 - **Rule-Based Regime Detection**: SMA(50) vs SMA(200) crossover on S&P 500 for trend state
 - **VIX Analysis**: Real-time fear gauge classification (Low/Normal/High/Crisis)
 - **Macro Indicators**: Yield curve shape, Fed Funds direction, unemployment trends
+- **Auto-Fetch from FRED**: VIX, yields, and macro data are automatically fetched from FRED on first regime detection if missing from the database
 - **Combined Signal**: Weighted vote across all three methods produces RISK_ON, NEUTRAL, RISK_OFF, or CRISIS
 
 ### Portfolio Management
 - **Position Tracking**: Add stocks manually or import via CSV/Vested export
+- **Auto Sector Detection**: Sector info fetched from Yahoo Finance on position add and price refresh — no manual tagging needed
 - **Risk Metrics**: Value at Risk (VaR), Conditional VaR, Max Drawdown, Sharpe Ratio, Sortino Ratio
+- **Auto Price Backfill**: Risk metrics auto-fetch 1 year of historical prices from Yahoo on first computation if the database is empty
 - **Portfolio Beta**: How your portfolio moves relative to the S&P 500
 - **Correlation Matrix**: Shows which of your stocks move together (less correlation = better diversification)
 - **Kelly Position Sizing**: Mathematically optimal bet sizing, halved for safety, adjusted by market regime
@@ -112,6 +119,8 @@ You see it all on a clean dashboard with charts and scores
 - **Risk Factor Identification**: AI highlights what could go wrong
 - **Position Size Suggestions**: Based on your portfolio and current regime
 - **Market Outlook**: Big-picture view of where the market is heading
+- **Portfolio Review**: AI grades your portfolio (A-F), identifies strengths/weaknesses, and gives actionable recommendations — cached 24h to minimize API costs
+- **Portfolio Q&A**: Ask natural-language questions about your portfolio ("Which position should I trim?", "Am I over-concentrated?") — scoped to portfolio data only with keyword guardrails
 - **No Hallucination**: AI only interprets real data — never generates predictions from nothing
 
 ---
@@ -123,7 +132,7 @@ You see it all on a clean dashboard with charts and scores
 | **yahoo-finance2** | Stock prices (OHLCV), company fundamentals, sector info | Free |
 | **FRED API** | GDP, CPI, unemployment, Fed Funds rate, Treasury yields, VIX | Free (API key required) |
 | **Finnhub** | Company news headlines with sentiment scoring | Free tier (60 req/min) |
-| **Claude API** | AI-powered analysis and reasoning | Pay-per-use (~$0.50-2/day) |
+| **Claude API** | AI-powered analysis and reasoning | Pay-per-use (~$0.50-2/day with Haiku caching) |
 
 ---
 
@@ -177,7 +186,7 @@ npm run dev
 
 ---
 
-## API Endpoints (42 total)
+## API Endpoints (44 total)
 
 ### Market Data (`/market`) — 6 endpoints
 | Method | Path | Description |
@@ -226,12 +235,14 @@ npm run dev
 | GET | `/portfolio/twr` | Time-weighted return |
 | GET | `/portfolio/health` | Portfolio health score (0-100) |
 
-### AI Reasoning (`/ai`) — 3 endpoints
+### AI Reasoning (`/ai`) — 5 endpoints
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/ai/analyze/:ticker` | AI scenario analysis (bull/base/bear) |
 | POST | `/ai/screen` | Batch AI screening with actions |
 | GET | `/ai/outlook` | AI market outlook |
+| GET | `/ai/portfolio-review` | AI portfolio review with grade (A-F), cached 24h. `?force=true` bypasses cache |
+| POST | `/ai/portfolio-query` | Ask a question about your portfolio. Body: `{ "query": "..." }` |
 
 ### Regime Detection (`/regime`) — 4 endpoints
 | Method | Path | Description |
@@ -252,9 +263,9 @@ Market Analyser/
 │   │   └── schema.prisma       # 11 database models
 │   ├── src/
 │   │   ├── ai/                 # Claude API reasoning layer
-│   │   │   ├── reasoner.ts     # AIReasoner class with caching
-│   │   │   ├── schemas.ts      # Zod validation schemas
-│   │   │   └── prompts.ts      # Prompt templates
+│   │   │   ├── reasoner.ts     # AIReasoner class with caching (ticker + portfolio review + Q&A)
+│   │   │   ├── schemas.ts      # Zod validation schemas (incl. PortfolioReviewSchema)
+│   │   │   └── prompts.ts      # Prompt templates (analysis, screening, outlook, review, query)
 │   │   ├── analysis/           # Technical, fundamental, regime engines
 │   │   │   ├── technical.ts    # 18+ indicators, 5-dimension scoring
 │   │   │   ├── fundamental.ts  # Value/quality/growth/dividend scoring
@@ -283,7 +294,7 @@ Market Analyser/
 │   │   │   ├── market.ts       # 6 endpoints
 │   │   │   ├── analysis.ts     # 5 endpoints
 │   │   │   ├── portfolio.ts    # 24 endpoints
-│   │   │   ├── ai.ts           # 3 endpoints
+│   │   │   ├── ai.ts           # 5 endpoints
 │   │   │   └── regime.ts       # 4 endpoints
 │   │   ├── utils/
 │   │   │   ├── math.ts         # Statistical helpers (std, mean, Cholesky, etc.)
@@ -298,7 +309,7 @@ Market Analyser/
 │   └── .env
 ├── frontend/                   # Next.js React frontend
 │   └── src/
-│       ├── app/                # Pages (dashboard, screener, portfolio, regime, analysis)
+│       ├── app/                # Pages (dashboard with AI review, screener, portfolio, regime, analysis)
 │       ├── components/         # UI components (charts, cards, tables)
 │       ├── lib/                # API client and utilities
 │       └── types/              # TypeScript type definitions
