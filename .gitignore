@@ -26,5 +26,6 @@ Thumbs.db
 *.log
 *.pem
 
-#claude
-.claude
+# Claude
+.claude/
+CLAUDE.md
