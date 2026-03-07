@@ -147,6 +147,13 @@ export const aiAPI = {
     return fetchAPI<any>(`/ai/screen${query}`, { method: "POST" });
   },
   getOutlook: () => fetchAPI<any>("/ai/outlook"),
+  getPortfolioReview: (force = false) =>
+    fetchAPI<any>(`/ai/portfolio-review?force=${force}`),
+  portfolioQuery: (query: string) =>
+    fetchAPI<{ answer: string }>("/ai/portfolio-query", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+    }),
 };
 
 // Regime

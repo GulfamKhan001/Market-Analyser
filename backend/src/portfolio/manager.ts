@@ -10,6 +10,7 @@ import { getSettings } from '../config';
 import { recordTransaction, recordCashChange } from './transactions';
 import { startOfDay, toDateString } from '../utils/format';
 import { getYahooFinance } from '../utils/yahooFinance';
+import { fetchFundamentals } from '../ingestion/yahoo';
 
 export async function addPosition(
   prisma: PrismaClient,
@@ -25,11 +26,20 @@ export async function addPosition(
   const db = prisma;
   const ticker = opts.ticker.toUpperCase();
 
-  // Try to pull sector from existing fundamentals
-  const fundamental = await db.fundamental.findFirst({
+  // Try to pull sector from existing fundamentals, fetch if missing
+  let fundamental = await db.fundamental.findFirst({
     where: { ticker },
     orderBy: { dateFetched: 'desc' },
   });
+  if (!fundamental?.sector) {
+    try {
+      await fetchFundamentals(ticker, db);
+      fundamental = await db.fundamental.findFirst({
+        where: { ticker },
+        orderBy: { dateFetched: 'desc' },
+      });
+    } catch {}
+  }
 
   const position = await db.portfolioPosition.create({
     data: {
@@ -133,6 +143,7 @@ export async function updateCurrentPrices(prisma?: PrismaClient): Promise<void> 
 
   const tickers = [...new Set(positions.map(p => p.ticker))];
   const latestPrices: Record<string, number> = {};
+  const tickerSectors: Record<string, string> = {};
 
   for (const ticker of tickers) {
     try {
@@ -146,26 +157,65 @@ export async function updateCurrentPrices(prisma?: PrismaClient): Promise<void> 
     }
   }
 
+  // Backfill missing sectors: try fundamentals table first, then fetch from Yahoo
+  const needsSector = positions.filter(p => !p.sector);
+  if (needsSector.length > 0) {
+    const tickersNeedingSector = [...new Set(needsSector.map(p => p.ticker))];
+    for (const ticker of tickersNeedingSector) {
+      // 1) Check fundamentals table
+      const fundamental = await db.fundamental.findFirst({
+        where: { ticker },
+        orderBy: { dateFetched: 'desc' },
+      });
+      if (fundamental?.sector) {
+        tickerSectors[ticker] = fundamental.sector;
+        continue;
+      }
+      // 2) Fetch directly from Yahoo quoteSummary
+      try {
+        const yahooFinance = await getYahooFinance();
+        const summary = await yahooFinance.quoteSummary(ticker, { modules: ['assetProfile'] });
+        const sector = summary?.assetProfile?.sector;
+        if (sector) {
+          tickerSectors[ticker] = sector;
+          console.log(`Fetched sector for ${ticker}: ${sector}`);
+        }
+      } catch {
+        console.warn(`Could not fetch sector for ${ticker}`);
+      }
+    }
+  }
+
   for (const position of positions) {
     const price = latestPrices[position.ticker];
-    if (price === undefined) continue;
+    const sectorBackfill = !position.sector ? tickerSectors[position.ticker] : undefined;
 
-    const entryPrice = Number(position.entryPrice);
-    const qty = Number(position.quantity);
-    let pnl: number;
+    if (price === undefined && !sectorBackfill) continue;
 
-    if (position.positionType === 'short') {
-      pnl = Math.round((entryPrice - price) * qty * 100) / 100;
-    } else {
-      pnl = Math.round((price - entryPrice) * qty * 100) / 100;
+    const updateData: Record<string, any> = {};
+
+    if (price !== undefined) {
+      const entryPrice = Number(position.entryPrice);
+      const qty = Number(position.quantity);
+      let pnl: number;
+
+      if (position.positionType === 'short') {
+        pnl = Math.round((entryPrice - price) * qty * 100) / 100;
+      } else {
+        pnl = Math.round((price - entryPrice) * qty * 100) / 100;
+      }
+
+      updateData.currentPrice = Math.round(price * 10000) / 10000;
+      updateData.unrealizedPnl = pnl;
+    }
+
+    if (sectorBackfill) {
+      updateData.sector = sectorBackfill;
     }
 
     await db.portfolioPosition.update({
       where: { id: position.id },
-      data: {
-        currentPrice: Math.round(price * 10000) / 10000,
-        unrealizedPnl: pnl,
-      },
+      data: updateData,
     });
   }
 
@@ -177,6 +227,7 @@ export async function getPortfolioSummary(prisma?: PrismaClient): Promise<Record
   const positions = await getPositions(db);
 
   let totalValue = 0;
+  let totalCost = 0;
   let totalPnl = 0;
   const sectorValues: Record<string, number> = {};
 
@@ -185,6 +236,7 @@ export async function getPortfolioSummary(prisma?: PrismaClient): Promise<Record
     const qty = Number(p.quantity);
     const mv = price * qty;
     totalValue += mv;
+    totalCost += Number(p.entryPrice) * qty;
     totalPnl += p.unrealizedPnl || 0;
 
     const sector = p.sector || 'Unknown';
@@ -200,7 +252,9 @@ export async function getPortfolioSummary(prisma?: PrismaClient): Promise<Record
 
   return {
     total_value: Math.round(totalValue * 100) / 100,
+    total_cost: Math.round(totalCost * 100) / 100,
     total_pnl: Math.round(totalPnl * 100) / 100,
+    total_pnl_pct: totalCost > 0 ? Math.round((totalPnl / totalCost) * 10000) / 10000 : 0,
     position_count: positions.length,
     sector_allocation: sectorAllocation,
   };

@@ -30,11 +30,29 @@ async function getPortfolioReturns(db: PrismaClient, days: number = 252): Promis
 
   const tickers = Object.keys(tickerQty);
 
-  const pricesRaw = await db.stockPrice.findMany({
+  let pricesRaw = await db.stockPrice.findMany({
     where: { ticker: { in: tickers }, date: { gte: startDate } },
     orderBy: { date: 'asc' },
     select: { ticker: true, date: true, adjClose: true },
   });
+
+  // Auto-backfill historical prices if insufficient data
+  if (pricesRaw.length < 10) {
+    const existingTickers = new Set(pricesRaw.map(p => p.ticker));
+    const missingTickers = tickers.filter(t => !existingTickers.has(t) || pricesRaw.filter(p => p.ticker === t).length < 5);
+    for (const t of missingTickers) {
+      try {
+        await fetchPrices(t, '1y', db);
+      } catch {
+        console.warn(`Auto-backfill failed for ${t}`);
+      }
+    }
+    pricesRaw = await db.stockPrice.findMany({
+      where: { ticker: { in: tickers }, date: { gte: startDate } },
+      orderBy: { date: 'asc' },
+      select: { ticker: true, date: true, adjClose: true },
+    });
+  }
 
   if (pricesRaw.length === 0) return { dates: [], returns: [] };
 

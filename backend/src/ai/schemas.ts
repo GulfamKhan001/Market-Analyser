@@ -57,3 +57,15 @@ export const MarketOutlookSchema = z.object({
 });
 
 export type MarketOutlook = z.infer<typeof MarketOutlookSchema>;
+
+export const PortfolioReviewSchema = z.object({
+  investment_stage: z.string(),
+  portfolio_grade: z.enum(['A', 'B', 'C', 'D', 'F']),
+  overall_assessment: z.string(),
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  recommendations: z.array(z.string()),
+  risk_alerts: z.array(z.string()),
+});
+
+export type PortfolioReview = z.infer<typeof PortfolioReviewSchema>;

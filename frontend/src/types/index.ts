@@ -145,6 +145,24 @@ export interface MarketOutlook {
   outlook_text: string;
 }
 
+// Portfolio Review
+export interface PortfolioReview {
+  investment_stage: string;
+  portfolio_grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  overall_assessment: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  risk_alerts: string[];
+}
+
+export interface PortfolioReviewResponse {
+  empty?: boolean;
+  review?: PortfolioReview;
+  cached?: boolean;
+  analyzed_at?: string;
+}
+
 // Transactions
 export interface Transaction {
   id: number;

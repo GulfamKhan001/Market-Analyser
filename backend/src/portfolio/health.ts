@@ -86,11 +86,20 @@ function scoreBalance(riskMetrics: Record<string, any>, clusters: Record<string,
 export async function computeHealthScore(prisma?: PrismaClient): Promise<Record<string, any>> {
   const db = prisma || getPrisma();
 
+  const summary = await getPortfolioSummary(db);
+
+  // Return zeroes for empty portfolio
+  if (!summary.position_count) {
+    return {
+      total: 0, diversification: 0, risk: 0, performance: 0, balance: 0,
+      details: { position_count: 0, sector_hhi: 0, top_3_pct: 0, sharpe: null, max_drawdown: null, twr_annualized: 0, beta: null, cluster_count: 0 },
+    };
+  }
+
   const riskMetrics = await computeRiskMetrics(db);
   const concentration = await computeConcentration(db);
   const clusters = await correlationClusters(db);
   const twr = await computeTwr(db);
-  const summary = await getPortfolioSummary(db);
 
   // Sector HHI
   const hhi = riskMetrics.sector_concentration_hhi || 0;

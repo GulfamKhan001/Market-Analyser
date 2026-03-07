@@ -40,6 +40,45 @@ const OUTLOOK_SCHEMA = JSON.stringify({
   required: ['regime_assessment', 'sector_rotation', 'risk_level', 'key_themes', 'outlook_text'],
 }, null, 2);
 
+export function buildPortfolioQueryPrompt(
+  query: string,
+  positions: Record<string, any>[],
+  summary: Record<string, any>,
+  riskMetrics: Record<string, any>,
+  healthScore: Record<string, any>,
+  concentration: Record<string, any>,
+  regimeData: Record<string, any>,
+): [string, string] {
+  const systemPrompt =
+    'You are a portfolio analyst advising an India-based investor in US equities. ' +
+    'Prioritize capital preservation and risk-adjusted returns over S&P 500 long-term. ' +
+    'Base reasoning ONLY on provided portfolio data. No hype language. No guaranteed returns. ' +
+    'Answer the user\'s question concisely and directly. Use markdown formatting for readability. ' +
+    'IMPORTANT: Only answer questions about the user\'s portfolio — positions, risk, allocation, ' +
+    'performance, sector exposure, rebalancing. If the question is unrelated to their portfolio, ' +
+    'politely redirect them to ask a portfolio-related question.';
+
+  const userPrompt =
+    '## Portfolio Positions\n' +
+    `\`\`\`json\n${JSON.stringify(positions, null, 2)}\n\`\`\`\n\n` +
+    '## Portfolio Summary\n' +
+    `\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`\n\n` +
+    '## Risk Metrics\n' +
+    `\`\`\`json\n${JSON.stringify(riskMetrics, null, 2)}\n\`\`\`\n\n` +
+    '## Health Score\n' +
+    `\`\`\`json\n${JSON.stringify(healthScore, null, 2)}\n\`\`\`\n\n` +
+    '## Concentration\n' +
+    `\`\`\`json\n${JSON.stringify(concentration, null, 2)}\n\`\`\`\n\n` +
+    '## Market Regime\n' +
+    `\`\`\`json\n${JSON.stringify(regimeData, null, 2)}\n\`\`\`\n\n` +
+    '---\n\n' +
+    `## User Question\n${query}\n\n` +
+    'Answer the question above based ONLY on the provided portfolio data. ' +
+    'Keep the answer focused, actionable, and under 300 words.';
+
+  return [systemPrompt, userPrompt];
+}
+
 export function buildAnalysisPrompt(
   ticker: string,
   technicalData: Record<string, any>,
@@ -89,6 +128,60 @@ export function buildScreeningPrompt(
     '(no additional keys, no markdown fences):\n\n' +
     `\`\`\`\n${SCREENING_SCHEMA}\n\`\`\`\n\n` +
     'Return ONLY the raw JSON array.';
+
+  return [systemPrompt, userPrompt];
+}
+
+const PORTFOLIO_REVIEW_SCHEMA = JSON.stringify({
+  type: 'object',
+  properties: {
+    investment_stage: { type: 'string', description: 'e.g. Early Accumulation, Growth, Mature, Over-concentrated' },
+    portfolio_grade: { type: 'string', enum: ['A', 'B', 'C', 'D', 'F'] },
+    overall_assessment: { type: 'string', description: '2-4 sentence summary' },
+    strengths: { type: 'array', items: { type: 'string' } },
+    weaknesses: { type: 'array', items: { type: 'string' } },
+    recommendations: { type: 'array', items: { type: 'string' } },
+    risk_alerts: { type: 'array', items: { type: 'string' }, description: 'Urgent risks only, empty if none' },
+  },
+  required: ['investment_stage', 'portfolio_grade', 'overall_assessment', 'strengths', 'weaknesses', 'recommendations', 'risk_alerts'],
+}, null, 2);
+
+export function buildPortfolioReviewPrompt(
+  positions: Record<string, any>[],
+  summary: Record<string, any>,
+  riskMetrics: Record<string, any>,
+  healthScore: Record<string, any>,
+  concentration: Record<string, any>,
+  regimeData: Record<string, any>,
+): [string, string] {
+  const systemPrompt =
+    'You are a portfolio analyst advising an India-based investor in US equities. ' +
+    'Prioritize capital preservation and risk-adjusted returns over S&P 500 long-term. ' +
+    'Base reasoning ONLY on provided data. No hype language. No guaranteed returns. ' +
+    'Output valid JSON matching the schema.';
+
+  const userPrompt =
+    '## Portfolio Positions\n' +
+    `\`\`\`json\n${JSON.stringify(positions, null, 2)}\n\`\`\`\n\n` +
+    '## Portfolio Summary\n' +
+    `\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`\n\n` +
+    '## Risk Metrics\n' +
+    `\`\`\`json\n${JSON.stringify(riskMetrics, null, 2)}\n\`\`\`\n\n` +
+    '## Health Score\n' +
+    `\`\`\`json\n${JSON.stringify(healthScore, null, 2)}\n\`\`\`\n\n` +
+    '## Concentration\n' +
+    `\`\`\`json\n${JSON.stringify(concentration, null, 2)}\n\`\`\`\n\n` +
+    '## Market Regime\n' +
+    `\`\`\`json\n${JSON.stringify(regimeData, null, 2)}\n\`\`\`\n\n` +
+    '---\n\n' +
+    'Grade the portfolio A-F based on: diversification, risk management, ' +
+    'position quality, and alignment with long-term growth goals. ' +
+    'Identify the investment stage, strengths, weaknesses, and actionable recommendations. ' +
+    'Flag urgent risk alerts only if critical issues exist (otherwise empty array).\n\n' +
+    'Produce a JSON object that matches this schema exactly ' +
+    '(no additional keys, no markdown fences):\n\n' +
+    `\`\`\`\n${PORTFOLIO_REVIEW_SCHEMA}\n\`\`\`\n\n` +
+    'Return ONLY the raw JSON object.';
 
   return [systemPrompt, userPrompt];
 }

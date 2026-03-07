@@ -20,20 +20,33 @@ router.get('/current', async (_req: Request, res: Response) => {
     });
 
     const staleMs = 1 * 24 * 60 * 60 * 1000;
-    if (!latest || Date.now() - latest.date.getTime() > staleMs) {
-      const result = await detectRegime(db);
-      res.json(result);
-      return;
+    const hasUnknowns = latest && (latest.vixRegime === 'Unknown' || latest.yieldCurveState === 'Unknown');
+    if (!latest || Date.now() - latest.date.getTime() > staleMs || hasUnknowns) {
+      await detectRegime(db);
+      // Re-read from DB to get consistent flat shape
+      const fresh = await db.regimeState.findFirst({ orderBy: { date: 'desc' } });
+      if (fresh) {
+        res.json({
+          date: fresh.date.toISOString().split('T')[0],
+          regime_label: fresh.regimeLabel,
+          confidence: fresh.confidence,
+          vix_regime: fresh.vixRegime,
+          yield_curve_state: fresh.yieldCurveState,
+          breadth_score: fresh.breadthScore,
+          hmm_state: fresh.hmmState,
+        });
+        return;
+      }
     }
 
     res.json({
-      date: latest.date.toISOString().split('T')[0],
-      regime_label: latest.regimeLabel,
-      confidence: latest.confidence,
-      vix_regime: latest.vixRegime,
-      yield_curve_state: latest.yieldCurveState,
-      breadth_score: latest.breadthScore,
-      hmm_state: latest.hmmState,
+      date: latest!.date.toISOString().split('T')[0],
+      regime_label: latest!.regimeLabel,
+      confidence: latest!.confidence,
+      vix_regime: latest!.vixRegime,
+      yield_curve_state: latest!.yieldCurveState,
+      breadth_score: latest!.breadthScore,
+      hmm_state: latest!.hmmState,
     });
   } catch (e: any) {
     res.status(500).json({ detail: e.message });

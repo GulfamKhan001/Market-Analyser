@@ -13,7 +13,13 @@ interface AllocationPieProps {
 }
 
 export function AllocationPie({ sectorAllocation, positionWeights }: AllocationPieProps) {
-  const sectorData = Object.entries(sectorAllocation).map(([name, value]) => ({
+  // Filter out "Unknown" sectors — only show real sector data
+  const realSectors = Object.entries(sectorAllocation).filter(
+    ([name]) => name !== "Unknown" && name !== "unknown"
+  );
+  const hasSectorData = realSectors.length > 0;
+
+  const sectorData = realSectors.map(([name, value]) => ({
     name,
     value: Math.round(value * 100) / 100,
   }));
@@ -23,7 +29,7 @@ export function AllocationPie({ sectorAllocation, positionWeights }: AllocationP
     value: p.weight_pct,
   }));
 
-  if (!sectorData.length && !holdingData.length) {
+  if (!holdingData.length) {
     return (
       <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
         <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Allocation</h3>
@@ -32,9 +38,15 @@ export function AllocationPie({ sectorAllocation, positionWeights }: AllocationP
     );
   }
 
+  // When no sector data, show a single donut of holdings
+  const outerRadius = hasSectorData ? 120 : 110;
+  const innerRadius = hasSectorData ? 80 : 50;
+
   return (
     <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
-      <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Allocation</h3>
+      <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">
+        {hasSectorData ? "Allocation" : "Holdings"}
+      </h3>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
           {/* Outer ring: holdings */}
@@ -42,13 +54,13 @@ export function AllocationPie({ sectorAllocation, positionWeights }: AllocationP
             data={holdingData}
             cx="50%"
             cy="50%"
-            outerRadius={120}
-            innerRadius={80}
+            outerRadius={outerRadius}
+            innerRadius={innerRadius}
             dataKey="value"
             label={({ name, value, cx, cy, midAngle, outerRadius: or }: any) => {
               if (value < 5 || midAngle == null) return null;
               const RADIAN = Math.PI / 180;
-              const radius = (or ?? 120) + 20;
+              const radius = (or ?? outerRadius) + 20;
               const x = cx + radius * Math.cos(-midAngle * RADIAN);
               const y = cy + radius * Math.sin(-midAngle * RADIAN);
               return (
@@ -63,19 +75,21 @@ export function AllocationPie({ sectorAllocation, positionWeights }: AllocationP
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
           </Pie>
-          {/* Inner ring: sectors */}
-          <Pie
-            data={sectorData}
-            cx="50%"
-            cy="50%"
-            outerRadius={75}
-            innerRadius={40}
-            dataKey="value"
-          >
-            {sectorData.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={0.6} />
-            ))}
-          </Pie>
+          {/* Inner ring: sectors (only when real sector data exists) */}
+          {hasSectorData && (
+            <Pie
+              data={sectorData}
+              cx="50%"
+              cy="50%"
+              outerRadius={75}
+              innerRadius={40}
+              dataKey="value"
+            >
+              {sectorData.map((_, i) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={0.6} />
+              ))}
+            </Pie>
+          )}
           <Tooltip
             contentStyle={{ backgroundColor: "#1f2937", border: "1px solid #374151", borderRadius: 8 }}
             itemStyle={{ color: "#e5e7eb" }}

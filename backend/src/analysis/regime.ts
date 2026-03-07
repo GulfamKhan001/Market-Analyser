@@ -8,6 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { getPrisma } from '../db/client';
 import { mean, dailyReturns } from '../utils/math';
 import { daysAgo, startOfDay, toDateString } from '../utils/format';
+import { fetchSingleIndicator } from '../ingestion/fred';
 
 const VIX_LOW = 15;
 const VIX_NORMAL = 25;
@@ -79,10 +80,23 @@ async function trendRegime(db: PrismaClient): Promise<{ label: string; confidenc
 }
 
 async function vixRegime(db: PrismaClient): Promise<{ vix_level: number | null; label: string; confidence: number }> {
-  const latestVix = await db.macroIndicator.findFirst({
+  let latestVix = await db.macroIndicator.findFirst({
     where: { indicatorName: 'VIX' },
     orderBy: { date: 'desc' },
   });
+
+  // Auto-fetch VIX from FRED if missing
+  if (!latestVix) {
+    try {
+      await fetchSingleIndicator('VIX', 'VIXCLS', db, 30);
+      latestVix = await db.macroIndicator.findFirst({
+        where: { indicatorName: 'VIX' },
+        orderBy: { date: 'desc' },
+      });
+    } catch {
+      console.warn('Auto-fetch VIX from FRED failed');
+    }
+  }
 
   if (!latestVix) {
     return { vix_level: null, label: 'Unknown', confidence: 0 };
@@ -131,9 +145,21 @@ async function macroRegime(db: PrismaClient): Promise<{
   const signals: Record<string, string> = {};
   const confidence = 0.5;
 
-  // Yield curve
-  const tenY = await latestMacroValue(db, '10y_yield');
-  const twoY = await latestMacroValue(db, '2y_yield');
+  // Yield curve — auto-fetch from FRED if missing
+  let tenY = await latestMacroValue(db, '10y_yield');
+  let twoY = await latestMacroValue(db, '2y_yield');
+
+  if (tenY === null || twoY === null) {
+    try {
+      if (tenY === null) await fetchSingleIndicator('10y_yield', 'DGS10', db, 30);
+      if (twoY === null) await fetchSingleIndicator('2y_yield', 'DGS2', db, 30);
+      tenY = await latestMacroValue(db, '10y_yield');
+      twoY = await latestMacroValue(db, '2y_yield');
+    } catch {
+      console.warn('Auto-fetch yield data from FRED failed');
+    }
+  }
+
   let yc: number | null = null;
 
   if (tenY !== null && twoY !== null) {
@@ -143,6 +169,18 @@ async function macroRegime(db: PrismaClient): Promise<{
     else signals.yield_curve = 'Normal';
   } else {
     signals.yield_curve = 'Unknown';
+  }
+
+  // Auto-fetch fed funds and unemployment if missing
+  const ffCheck = await latestMacroValue(db, 'fed_funds_rate');
+  const unCheck = await latestMacroValue(db, 'unemployment_rate');
+  if (ffCheck === null || unCheck === null) {
+    try {
+      if (ffCheck === null) await fetchSingleIndicator('fed_funds_rate', 'FEDFUNDS', db, 10);
+      if (unCheck === null) await fetchSingleIndicator('unemployment_rate', 'UNRATE', db, 10);
+    } catch {
+      console.warn('Auto-fetch macro indicators from FRED failed');
+    }
   }
 
   signals.fed_funds = await indicatorTrend(db, 'fed_funds_rate');
