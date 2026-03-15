@@ -10,7 +10,7 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('8000'),
 
   // Database
-  DATABASE_URL: z.string().default('file:./market_analyser.db'),
+  DATABASE_URL: z.string().default('postgresql://postgres:postgres@localhost:5432/market_analyser'),
 
   // API Keys
   FRED_API_KEY: z.string().default(''),

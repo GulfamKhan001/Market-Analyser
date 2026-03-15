@@ -348,7 +348,7 @@ export async function takeSnapshot(prisma?: PrismaClient) {
     sharpeRatio: riskMetrics.sharpe_ratio ?? null,
     sortinoRatio: riskMetrics.sortino_ratio ?? null,
     beta: riskMetrics.beta ?? null,
-    sectorAllocationsJson: JSON.stringify(summary.sector_allocation),
+    sectorAllocationsJson: summary.sector_allocation,
   };
 
   if (existing) {

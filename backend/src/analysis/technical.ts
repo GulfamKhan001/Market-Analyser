@@ -309,7 +309,7 @@ export async function analyzeTicker(
     high: r.high || 0,
     low: r.low || 0,
     close: r.close || 0,
-    volume: r.volume || 0,
+    volume: Number(r.volume ?? 0),
   }));
 
   const ind = computeIndicators(data);

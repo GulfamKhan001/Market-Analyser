@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,7 +16,7 @@ model StockPrice {
   low      Float?
   close    Float?
   adjClose Float?   @map("adj_close")
-  volume   Int?
+  volume   BigInt?
 
   @@unique([ticker, date], name: "uq_ticker_date")
   @@index([ticker])
@@ -46,6 +46,7 @@ model Fundamental {
   industry       String?
 
   @@index([ticker])
+  @@index([ticker, dateFetched])
   @@map("fundamentals")
 }
 
@@ -98,6 +99,7 @@ model TechnicalSignal {
 
   @@unique([ticker, date, timeframe], name: "uq_tech_ticker_date_tf")
   @@index([ticker])
+  @@index([timeframe, date])
   @@map("technical_signals")
 }
 
@@ -124,7 +126,7 @@ model PortfolioPosition {
   unrealizedPnl Float?   @map("unrealized_pnl")
   sector        String?
   positionType  String   @default("long") @map("position_type")
-  notes         String?
+  notes         String?  @db.Text
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -142,7 +144,7 @@ model PortfolioSnapshot {
   sharpeRatio           Float?   @map("sharpe_ratio")
   sortinoRatio          Float?   @map("sortino_ratio")
   beta                  Float?
-  sectorAllocationsJson String?  @map("sector_allocations_json")
+  sectorAllocationsJson Json?    @map("sector_allocations_json")
 
   @@map("portfolio_snapshots")
 }
@@ -156,25 +158,26 @@ model AIAnalysis {
 
   bullProbability        Float?   @map("bull_probability")
   bullTarget             String?  @map("bull_target")
-  bullThesis             String?  @map("bull_thesis")
+  bullThesis             String?  @db.Text @map("bull_thesis")
 
   baseProbability        Float?   @map("base_probability")
   baseTarget             String?  @map("base_target")
-  baseThesis             String?  @map("base_thesis")
+  baseThesis             String?  @db.Text @map("base_thesis")
 
   bearProbability        Float?   @map("bear_probability")
   bearTarget             String?  @map("bear_target")
-  bearThesis             String?  @map("bear_thesis")
+  bearThesis             String?  @db.Text @map("bear_thesis")
 
-  riskFactorsJson        String?  @map("risk_factors_json")
+  riskFactorsJson        Json?    @map("risk_factors_json")
   drawdownEstimate       String?  @map("drawdown_estimate")
   positionSizeSuggestion Float?   @map("position_size_suggestion")
-  reasoningText          String?  @map("reasoning_text")
+  reasoningText          String?  @db.Text @map("reasoning_text")
   confidenceScore        Float?   @map("confidence_score")
   timeframe              String?
   createdAt              DateTime @default(now()) @map("created_at")
 
   @@index([ticker])
+  @@index([ticker, analysisType, createdAt])
   @@map("ai_analyses")
 }
 
@@ -188,7 +191,7 @@ model Transaction {
   totalAmount     String   @map("total_amount")
   fees            Float    @default(0.0)
   positionId      Int?     @map("position_id")
-  notes           String?
+  notes           String?  @db.Text
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([ticker, date], name: "ix_transaction_ticker_date")
@@ -212,13 +215,14 @@ model NewsSentiment {
   id             Int      @id @default(autoincrement())
   ticker         String
   date           DateTime
-  headline       String
+  headline       String   @db.Text
   source         String?
-  url            String?
+  url            String?  @db.Text
   sentimentScore Float?   @map("sentiment_score")
   relevanceScore Float?   @map("relevance_score")
-  summary        String?
+  summary        String?  @db.Text
 
   @@index([ticker])
+  @@index([ticker, date])
   @@map("news_sentiment")
 }
